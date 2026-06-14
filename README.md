@@ -100,6 +100,8 @@ kindling/
 - ✅ Preview da imagem do sprite group ao abrir os detalhes
 - ✅ Editor de part com canvas para clicar e desenhar vértices por cima da imagem
 - ✅ Undo/Clear para refazer o polígono
+- ✅ Inspector com `Sprite Offset X/Y` por osso (persistido no JSON)
+- ✅ Skeleton canvas renderiza a part selecionada (`spritePartId`) com offset aplicado
 
 **Próximas tarefas**:
 1. Canvas para adicionar/mover/remover vértices

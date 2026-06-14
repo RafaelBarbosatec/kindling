@@ -14,6 +14,8 @@ class _SkeletonPainter extends CustomPainter {
     required this.selectedBoneId,
     required this.canvasSize,
     required this.boneImages,
+    required this.spriteGroups,
+    required this.spriteGroupImages,
   });
 
   final List<Bone> bones;
@@ -21,6 +23,8 @@ class _SkeletonPainter extends CustomPainter {
   final String? selectedBoneId;
   final Size canvasSize;
   final Map<String, ui.Image> boneImages;
+  final List<SpriteGroup> spriteGroups;
+  final Map<String, ui.Image> spriteGroupImages;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -78,7 +82,17 @@ class _SkeletonPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
 
       final image = boneImages[bone.id];
-      if (image != null) {
+      final groupImage = _resolveSpriteGroupImage(bone);
+      if (groupImage != null) {
+        _paintSpriteGroupPart(
+          canvas: canvas,
+          bone: bone,
+          originOffset: originOffset,
+          tipOffset: tipOffset,
+          image: groupImage.image,
+          part: groupImage.part,
+        );
+      } else if (image != null) {
         canvas.save();
         canvas.translate(originOffset.dx, originOffset.dy);
         canvas.rotate(
@@ -152,8 +166,102 @@ class _SkeletonPainter extends CustomPainter {
         oldDelegate.editedRotations != editedRotations ||
         oldDelegate.selectedBoneId != selectedBoneId ||
         oldDelegate.canvasSize != canvasSize ||
-        oldDelegate.boneImages != boneImages;
+        oldDelegate.boneImages != boneImages ||
+        oldDelegate.spriteGroups != spriteGroups ||
+        oldDelegate.spriteGroupImages != spriteGroupImages;
   }
+
+  _ResolvedSpritePart? _resolveSpriteGroupImage(Bone bone) {
+    final groupId = bone.spriteGroupId;
+    if (groupId == null) {
+      return null;
+    }
+    final group = spriteGroups.where((item) => item.id == groupId).firstOrNull;
+    if (group == null) {
+      return null;
+    }
+
+    final image = spriteGroupImages[groupId];
+    if (image == null) {
+      return null;
+    }
+
+    final partId = bone.spritePartId;
+    SpriteDefinition? part;
+    if (partId != null) {
+      part = group.sprites.where((item) => item.id == partId).firstOrNull;
+    }
+
+    return _ResolvedSpritePart(image: image, part: part);
+  }
+
+  void _paintSpriteGroupPart({
+    required Canvas canvas,
+    required Bone bone,
+    required Offset originOffset,
+    required Offset tipOffset,
+    required ui.Image image,
+    required SpriteDefinition? part,
+  }) {
+    final src = _sourceRectForPart(image, part);
+    final spriteWidth = bone.length * bone.localScale;
+    final spriteHeight = spriteWidth * (src.height / src.width);
+
+    canvas.save();
+    canvas.translate(originOffset.dx, originOffset.dy);
+    canvas.rotate(
+      math.atan2(
+        tipOffset.dy - originOffset.dy,
+        tipOffset.dx - originOffset.dx,
+      ),
+    );
+    canvas.translate(bone.spriteOffset.dx, bone.spriteOffset.dy);
+
+    final dst = Rect.fromCenter(
+      center: Offset(spriteWidth / 2, 0),
+      width: spriteWidth,
+      height: spriteHeight,
+    );
+    canvas.drawImageRect(image, src, dst, Paint());
+    canvas.restore();
+  }
+
+  Rect _sourceRectForPart(ui.Image image, SpriteDefinition? part) {
+    if (part == null || part.vertices.isEmpty) {
+      return Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      );
+    }
+
+    var minX = part.vertices.first.dx;
+    var minY = part.vertices.first.dy;
+    var maxX = part.vertices.first.dx;
+    var maxY = part.vertices.first.dy;
+
+    for (final vertex in part.vertices) {
+      if (vertex.dx < minX) minX = vertex.dx;
+      if (vertex.dy < minY) minY = vertex.dy;
+      if (vertex.dx > maxX) maxX = vertex.dx;
+      if (vertex.dy > maxY) maxY = vertex.dy;
+    }
+
+    final clampedMinX = minX.clamp(0.0, image.width.toDouble() - 1);
+    final clampedMinY = minY.clamp(0.0, image.height.toDouble() - 1);
+    final clampedMaxX = maxX.clamp(clampedMinX + 1.0, image.width.toDouble());
+    final clampedMaxY = maxY.clamp(clampedMinY + 1.0, image.height.toDouble());
+
+    return Rect.fromLTRB(clampedMinX, clampedMinY, clampedMaxX, clampedMaxY);
+  }
+}
+
+class _ResolvedSpritePart {
+  const _ResolvedSpritePart({required this.image, required this.part});
+
+  final ui.Image image;
+  final SpriteDefinition? part;
 }
 
 class _TimelineTrack {
@@ -349,7 +457,7 @@ class _SpriteGroupDetailsDialogState extends State<_SpriteGroupDetailsDialog> {
                   ? const Center(child: Text('No parts defined yet.'))
                   : ListView.separated(
                       itemCount: _sprites.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final sprite = _sprites[index];
                         return ListTile(

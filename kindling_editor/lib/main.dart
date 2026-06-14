@@ -53,6 +53,7 @@ class _EditorPageState extends State<EditorPage>
   late final Map<String, double> _editedRotations;
   late final Map<String, Map<double, double>> _rotationKeyframes;
   final Map<String, ui.Image> _boneImages = <String, ui.Image>{};
+  final Map<String, ui.Image> _spriteGroupImages = <String, ui.Image>{};
 
   String? _selectedBoneId;
   double _selectedFrameMs = 0;
@@ -83,6 +84,7 @@ class _EditorPageState extends State<EditorPage>
         id: 'root',
         name: 'Root',
         spritePath: null,
+        spriteOffset: Offset.zero,
         localPosition: Offset(0, 0),
         localRotation: 0,
         localScale: 1,
@@ -92,6 +94,7 @@ class _EditorPageState extends State<EditorPage>
         name: 'Arm',
         parentId: 'root',
         spritePath: null,
+        spriteOffset: Offset.zero,
         localPosition: Offset(120, 0),
         localRotation: 0,
         localScale: 1,
@@ -364,6 +367,7 @@ class _EditorPageState extends State<EditorPage>
         imageBase64: base64Data,
         sprites: <SpriteDefinition>[],
       );
+      final decodedImage = await decodeImageFromList(bytes);
 
       if (!mounted) {
         return;
@@ -371,6 +375,7 @@ class _EditorPageState extends State<EditorPage>
 
       setState(() {
         _spriteGroups.add(newGroup);
+        _spriteGroupImages[groupId] = decodedImage;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -396,6 +401,7 @@ class _EditorPageState extends State<EditorPage>
   void _deleteSpriteGroup(String groupId) {
     setState(() {
       _spriteGroups.removeWhere((g) => g.id == groupId);
+      _spriteGroupImages.remove(groupId);
     });
   }
 
@@ -626,6 +632,57 @@ class _EditorPageState extends State<EditorPage>
                 const Text('Sprite Part:', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 _buildSpritePartDropdown(selectedBone),
+                const SizedBox(height: 12),
+                const Text(
+                  'Sprite Offset (px):',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextFormField(
+                        key: ValueKey<String>(
+                          'offset_x_${selectedBone.id}_${selectedBone.spriteOffset.dx.toStringAsFixed(2)}',
+                        ),
+                        initialValue: selectedBone.spriteOffset.dx
+                            .toStringAsFixed(2),
+                        enabled: !_isPlaying,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                          signed: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Offset X',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onFieldSubmitted: _setSelectedBoneSpriteOffsetX,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        key: ValueKey<String>(
+                          'offset_y_${selectedBone.id}_${selectedBone.spriteOffset.dy.toStringAsFixed(2)}',
+                        ),
+                        initialValue: selectedBone.spriteOffset.dy
+                            .toStringAsFixed(2),
+                        enabled: !_isPlaying,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                          signed: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Offset Y',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onFieldSubmitted: _setSelectedBoneSpriteOffsetY,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 12),
@@ -744,6 +801,52 @@ class _EditorPageState extends State<EditorPage>
     });
   }
 
+  void _setSelectedBoneSpriteOffsetX(String value) {
+    final selectedBoneId = _selectedBoneId;
+    if (selectedBoneId == null) {
+      return;
+    }
+    final parsed = double.tryParse(value.replaceAll(',', '.'));
+    if (parsed == null) {
+      return;
+    }
+
+    setState(() {
+      _bones = _bones
+          .map(
+            (bone) => bone.id == selectedBoneId
+                ? bone.copyWith(
+                    spriteOffset: Offset(parsed, bone.spriteOffset.dy),
+                  )
+                : bone,
+          )
+          .toList(growable: false);
+    });
+  }
+
+  void _setSelectedBoneSpriteOffsetY(String value) {
+    final selectedBoneId = _selectedBoneId;
+    if (selectedBoneId == null) {
+      return;
+    }
+    final parsed = double.tryParse(value.replaceAll(',', '.'));
+    if (parsed == null) {
+      return;
+    }
+
+    setState(() {
+      _bones = _bones
+          .map(
+            (bone) => bone.id == selectedBoneId
+                ? bone.copyWith(
+                    spriteOffset: Offset(bone.spriteOffset.dx, parsed),
+                  )
+                : bone,
+          )
+          .toList(growable: false);
+    });
+  }
+
   Widget _buildCanvasPanel() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -760,6 +863,8 @@ class _EditorPageState extends State<EditorPage>
               selectedBoneId: _selectedBoneId,
               canvasSize: constraints.biggest,
               boneImages: _boneImages,
+              spriteGroups: _spriteGroups,
+              spriteGroupImages: _spriteGroupImages,
             ),
             child: const SizedBox.expand(),
           ),
@@ -1023,6 +1128,7 @@ class _EditorPageState extends State<EditorPage>
           name: 'Bone $labelIndex',
           parentId: parentId,
           spritePath: null,
+          spriteOffset: Offset.zero,
           localPosition: Offset(offsetX, 0),
           localRotation: 0,
           localScale: 1,

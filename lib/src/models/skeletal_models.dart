@@ -11,6 +11,7 @@ class Bone {
     this.spritePath,
     this.spriteGroupId,
     this.spritePartId,
+    this.spriteOffset = Offset.zero,
     required this.localPosition,
     required this.localRotation,
     required this.localScale,
@@ -23,6 +24,7 @@ class Bone {
   final String? spritePath;
   final String? spriteGroupId;
   final String? spritePartId;
+  final Offset spriteOffset;
   final Offset localPosition;
   final double localRotation;
   final double localScale;
@@ -35,6 +37,7 @@ class Bone {
     String? spritePath,
     String? spriteGroupId,
     String? spritePartId,
+    Offset? spriteOffset,
     Offset? localPosition,
     double? localRotation,
     double? localScale,
@@ -47,6 +50,7 @@ class Bone {
       spritePath: spritePath ?? this.spritePath,
       spriteGroupId: spriteGroupId ?? this.spriteGroupId,
       spritePartId: spritePartId ?? this.spritePartId,
+      spriteOffset: spriteOffset ?? this.spriteOffset,
       localPosition: localPosition ?? this.localPosition,
       localRotation: localRotation ?? this.localRotation,
       localScale: localScale ?? this.localScale,
@@ -62,6 +66,10 @@ class Bone {
       'spritePath': spritePath,
       'spriteGroupId': spriteGroupId,
       'spritePartId': spritePartId,
+      'spriteOffset': <String, dynamic>{
+        'x': spriteOffset.dx,
+        'y': spriteOffset.dy,
+      },
       'localPosition': <String, dynamic>{
         'x': localPosition.dx,
         'y': localPosition.dy,
@@ -76,6 +84,9 @@ class Bone {
     final position =
         (json['localPosition'] as Map<String, dynamic>?) ??
         const <String, dynamic>{'x': 0.0, 'y': 0.0};
+    final spriteOffset =
+      (json['spriteOffset'] as Map<String, dynamic>?) ??
+      const <String, dynamic>{'x': 0.0, 'y': 0.0};
 
     return Bone(
       id: json['id'] as String,
@@ -84,6 +95,10 @@ class Bone {
       spritePath: json['spritePath'] as String?,
       spriteGroupId: json['spriteGroupId'] as String?,
       spritePartId: json['spritePartId'] as String?,
+      spriteOffset: Offset(
+        (spriteOffset['x'] as num).toDouble(),
+        (spriteOffset['y'] as num).toDouble(),
+      ),
       localPosition: Offset(
         (position['x'] as num).toDouble(),
         (position['y'] as num).toDouble(),

@@ -399,6 +399,7 @@ class _EditorPageState extends State<EditorPage>
   }
 
   Widget _buildTimelinePanel() {
+    const trackLabelWidth = 180.0;
     final selectedBoneId = _selectedBoneId;
     final selectedBoneRotation = selectedBoneId == null
         ? null
@@ -406,7 +407,9 @@ class _EditorPageState extends State<EditorPage>
     final rulerMarks = _buildTimelineRulerMarks();
     final tracks = _buildTimelineTracks();
     final currentTimeMs = _isPlaying ? _playbackTimeMs : _selectedFrameMs;
-    final playheadX = _timeToPixels(currentTimeMs);
+    final timelineContentWidth = _timeToPixels(_timelineDurationMs) + 80;
+    final fullTimelineWidth = trackLabelWidth + timelineContentWidth;
+    final playheadX = trackLabelWidth + _timeToPixels(currentTimeMs);
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -494,7 +497,9 @@ class _EditorPageState extends State<EditorPage>
                         behavior: HitTestBehavior.opaque,
                         onTapDown: (details) {
                           if (_isPlaying) return;
-                          final localX = details.localPosition.dx;
+                          final localX =
+                              (details.localPosition.dx - trackLabelWidth)
+                                  .clamp(0.0, timelineContentWidth);
                           setState(() {
                             _selectedFrameMs = _snapTime(_pixelsToTime(localX));
                             _applyFrameToEditorPose(_selectedFrameMs);
@@ -503,7 +508,7 @@ class _EditorPageState extends State<EditorPage>
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
-                            width: _timeToPixels(_timelineDurationMs) + 80,
+                            width: fullTimelineWidth,
                             child: Stack(
                               children: <Widget>[
                                 Column(
@@ -512,8 +517,7 @@ class _EditorPageState extends State<EditorPage>
                                       height: 32,
                                       child: CustomPaint(
                                         size: Size(
-                                          _timeToPixels(_timelineDurationMs) +
-                                              80,
+                                          timelineContentWidth,
                                           32,
                                         ),
                                         painter: _TimelineRulerPainter(
@@ -536,7 +540,7 @@ class _EditorPageState extends State<EditorPage>
                                             child: Row(
                                               children: <Widget>[
                                                 SizedBox(
-                                                  width: 180,
+                                                  width: trackLabelWidth,
                                                   child: InkWell(
                                                     onTap: () {
                                                       setState(() {
@@ -565,16 +569,10 @@ class _EditorPageState extends State<EditorPage>
                                                   ),
                                                 ),
                                                 SizedBox(
-                                                  width: _timeToPixels(
-                                                        _timelineDurationMs,
-                                                      ) +
-                                                      80,
+                                                  width: timelineContentWidth,
                                                   child: CustomPaint(
                                                     size: Size(
-                                                      _timeToPixels(
-                                                            _timelineDurationMs,
-                                                          ) +
-                                                          80,
+                                                      timelineContentWidth,
                                                       44,
                                                     ),
                                                     painter:

@@ -70,86 +70,52 @@ kindling/
 
 ### 3. **Example Preview App**
 - ✅ Importação de JSON via texto
+- ✅ Importação opcional de `spritegroups.json`
 - ✅ Campo de diretório base para resolver sprites PNG
 - ✅ Seleção de clip com botões
 - ✅ Slider de blend duration
 - ✅ Auto-switch toggle para replay contínuo
 - ✅ HUD overlay com controles visíveis
 
-## 🎯 Próximas Etapas (Para Continuar Depois)
+## 🎯 Próximos Passos (Atualizado)
 
-### Fase 1: Sprite Groups Manager (MVP Simplificado) - 60% ✅
-**Objetivo**: Introducir sistema de sprite sheets com base64 e partes nomeadas.
+### Fase 1: Sprite Groups Manager - ✅ COMPLETA
+**Objetivo**: Sistema de sprite sheets com base64 e partes nomeadas.
 
-**O que já foi implementado** ✅:
-- ✅ Nova aba "Sprite Groups" no editor com TabBar
-- ✅ UI com GridView para listar grupos (cards com tamanho de arquivo)
-- ✅ Botão Delete para remover groups
-- ✅ **File picker + base64**: Botão "Import Image" funciona
-- ✅ **Part management**: Dialog para editar partes de cada grupo
-- ✅ **Add part**: Criar novas partes com IDs auto-gerados
-- ✅ **Remove part**: Deletar partes do grupo
+**Concluído**:
+- ✅ Aba "Sprite Groups" no editor com TabBar
+- ✅ Grid de grupos com cards e ações de remoção
+- ✅ Importação de imagem com file picker + base64
+- ✅ Gerenciamento de parts em dialog
+- ✅ Inspector com `spriteGroupId` e `spritePartId`
+- ✅ Exportação dual: `skeleton.json` + `spritegroups.json`
+- ✅ Preview runtime carrega sprite groups e exibe sprites vinculados ao esqueleto
 
-**O que ainda falta nesta fase**:
-1. 🔴 **Update Inspector** (Connect Bones to Sprite Groups):
-   - Na aba Skeleton/Inspector: Adicionar dropdowns
-   - Dropdown 1: Selecionar `spriteGroupId` (lista de grupos importados)
-   - Dropdown 2: Selecionar `spritePartId` (partes do grupo selecionado)
-   - Visual: mostrar grupo + parte selecionados
-
-2. 🔴 **Exportação Dual JSON**:
-   - Botão "Export JSON" também salva `spritegroups.json`
-   - Ambos files com estrutura correta para runtime
-
-3. 🔴 **Runtime Integration** (fase 2):
-   - `SkeletalAnimationComponent` carrega `spritegroups.json`
-   - Renderiza corretamente usando `spriteGroupId` + `spritePartId`
-
-### Fase 2: Editor Visual de Vértices (Profissional)
+### Fase 2: Vertex Editor Canvas
 **Objetivo**: Desenhar e manipular vértices para recortar sprite areas.
 
-**O que implementar**:
-1. **Canvas de edição de vértices**: 
-   - Exibe imagem do group em fundo
-   - Click para adicionar vértice (ponto branco)
-   - Drag para mover vértices
-   - Visualização do polígono (arestas em azul)
-   - Remove vértice (right-click ou btn delete)
+**Próximas tarefas**:
+1. Canvas para adicionar/mover/remover vértices
+2. Validação de polígonos e self-intersections
+3. Preview lado a lado da imagem original e do corte
 
-2. **Validação de polígonos**:
-   - Mínimo 3 vértices
-   - Ordem contra-relógio (CCW) automática
-   - Detecção de self-intersections com warning
+### Fase 3: Sprite Clipping no Runtime
+**Objetivo**: Usar vertices para recortar a imagem no preview/runtime.
 
-3. **Preview do sprite cortado**:
-   - Render apenas a áreaentre os vértices
-   - No próprio canvas, lado-a-lado com a imagem original
-
-### Fase 3: Aplicação em Ossos
-**Objetivo**: Usar sprite groups corretamente na renderização.
-
-**O que implementar**:
-1. **Runtime**: `SkeletalAnimationComponent`
-   - Carregar `spritegroups.json`
-   - Para cada osso com `spriteGroupId+spritePartId`, buscar vértices
-   - Renderizar apenas aquela área da imagem (usar ClipPath ou CustomPaint)
-
-2. **Example app**:
-   - Importar ambos JSONs
-   - Botão "Load Sprite Groups" ao lado do load JSON
-   - Preview mostra skeletons com sprites corretamente recortados
+**Próximas tarefas**:
+1. ClipPath/CustomPaint por part
+2. Suporte a múltiplas parts por grupo no runtime
+3. Exibir fallback quando o part não tiver vértices
 
 ### Fase 4: UX Profissional
-**Objetivo**: Recursos avançados.
+**Objetivo**: Refinar a experiência do editor e do preview.
 
-**O que implementar**:
-1. **Undo/Redo** (via command pattern)
-2. **Themes** (dark mode, light mode)
-3. **Hotkeys** (Space=play, Delete=remove osso, etc)
-4. **Grid snapping** para vértices
-5. **Múltiplos skeleton projects** abertos
-6. **Export direto para PNG** de frames da preview
-7. **Performance**: Lazy-load de imagens, cache de transforms
+**Próximas tarefas**:
+1. Undo/Redo
+2. Themes e hotkeys
+3. Grid snapping
+4. Export PNG do preview
+5. Cache e melhorias de performance
 
 ## 🔨 Como Continuar o Projeto
 
@@ -239,7 +205,7 @@ dependencies:
 
 ---
 
-**Status**: MVP v1 Completo ✅ | Adicionando Sprite Groups (Fase 1: 20% ✅)  
+**Status**: MVP v1 + Sprite Groups Manager ✅ | Próximo Milestone: Vertex Editor Canvas  
 **Linguagem**: Dart 3.11+  
 **Framework**: Flutter 3.16+  
 **License**: (Adicionar conforme necessário)

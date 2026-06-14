@@ -23,6 +23,7 @@ class DemoApp extends StatefulWidget {
 class _DemoAppState extends State<DemoApp> {
   late final SkeletalPreviewGame _game;
   final TextEditingController _importController = TextEditingController();
+  final TextEditingController _spriteGroupsController = TextEditingController();
   final TextEditingController _assetBasePathController =
       TextEditingController();
 
@@ -54,6 +55,7 @@ class _DemoAppState extends State<DemoApp> {
     _importController.text = await Clipboard.getData(
       'text/plain',
     ).then((value) => value?.text ?? '').catchError((_) => '');
+    _spriteGroupsController.clear();
     if (!mounted) {
       return;
     }
@@ -65,8 +67,8 @@ class _DemoAppState extends State<DemoApp> {
           title: const Text('Importar SkeletonProject JSON'),
           content: SizedBox(
             width: 760,
+            height: 640,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 TextField(
                   controller: _assetBasePathController,
@@ -77,13 +79,41 @@ class _DemoAppState extends State<DemoApp> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _importController,
-                  maxLines: 24,
-                  minLines: 16,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Cole aqui o JSON exportado pelo kindling_editor',
+                Expanded(
+                  child: ListView(
+                    children: <Widget>[
+                      const Text(
+                        'SkeletonProject JSON',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _importController,
+                        maxLines: 12,
+                        minLines: 12,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText:
+                              'Cole aqui o JSON exportado pelo kindling_editor',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'SpriteGroups JSON (opcional)',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _spriteGroupsController,
+                        maxLines: 12,
+                        minLines: 12,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText:
+                              'Cole aqui o spritegroups.json exportado pelo editor',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -104,9 +134,13 @@ class _DemoAppState extends State<DemoApp> {
                   }
 
                   final project = SkeletonProject.fromJson(decoded);
+                  final spriteGroups = _parseSpriteGroupsJson(
+                    _spriteGroupsController.text,
+                  );
                   await _game.loadProject(
                     project,
                     assetBasePath: _assetBasePathController.text.trim(),
+                    spriteGroupsById: spriteGroups,
                   );
 
                   final firstClip = project.animationClips.isNotEmpty
@@ -170,6 +204,7 @@ class _DemoAppState extends State<DemoApp> {
   @override
   void dispose() {
     _importController.dispose();
+    _spriteGroupsController.dispose();
     _assetBasePathController.dispose();
     super.dispose();
   }
@@ -217,6 +252,33 @@ class _DemoAppState extends State<DemoApp> {
   }
 }
 
+Map<String, SpriteGroup> _parseSpriteGroupsJson(String source) {
+  final trimmed = source.trim();
+  if (trimmed.isEmpty) {
+    return <String, SpriteGroup>{};
+  }
+
+  final decoded = jsonDecode(trimmed);
+  final rawGroups = switch (decoded) {
+    Map<String, dynamic> data when data['spriteGroups'] is List<dynamic> =>
+      data['spriteGroups'] as List<dynamic>,
+    Map<String, dynamic> data when data['groups'] is List<dynamic> =>
+      data['groups'] as List<dynamic>,
+    List<dynamic> data => data,
+    _ => throw const FormatException('SpriteGroups JSON invalido.'),
+  };
+
+  final result = <String, SpriteGroup>{};
+  for (final item in rawGroups) {
+    if (item is Map<String, dynamic>) {
+      final group = SpriteGroup.fromJson(item);
+      result[group.id] = group;
+    }
+  }
+
+  return result;
+}
+
 class SkeletalPreviewGame extends FlameGame {
   SkeletalPreviewGame({
     required String initialClip,
@@ -228,6 +290,7 @@ class SkeletalPreviewGame extends FlameGame {
 
   SkeletalAnimationComponent? _skeletal;
   late SkeletonProject _project;
+  Map<String, SpriteGroup> _spriteGroupsById = <String, SpriteGroup>{};
 
   String _currentClipName;
   double _blendDurationMs;
@@ -246,8 +309,10 @@ class SkeletalPreviewGame extends FlameGame {
   Future<void> loadProject(
     SkeletonProject project, {
     required String assetBasePath,
+    Map<String, SpriteGroup> spriteGroupsById = const <String, SpriteGroup>{},
   }) async {
     _project = project;
+    _spriteGroupsById = spriteGroupsById;
     _currentClipName = project.animationClips.isNotEmpty
         ? project.animationClips.first.name
         : _currentClipName;
@@ -264,9 +329,9 @@ class SkeletalPreviewGame extends FlameGame {
 
     for (var index = 0; index < project.bones.length; index++) {
       final bone = project.bones[index];
-      final spriteImage = await _tryLoadSpriteImage(
+      final spriteImage = await _tryLoadSpriteImageForBone(
         basePath: assetBasePath,
-        spritePath: bone.spritePath,
+        bone: bone,
       );
       if (spriteImage != null) {
         sprites[bone.id] = Sprite(spriteImage);
@@ -299,6 +364,29 @@ class SkeletalPreviewGame extends FlameGame {
     if (project.animationClips.isNotEmpty) {
       skeletal.play(_currentClipName, restart: true);
     }
+  }
+
+  Future<ui.Image?> _tryLoadSpriteImageForBone({
+    required String basePath,
+    required Bone bone,
+  }) async {
+    final groupId = bone.spriteGroupId;
+    if (groupId != null) {
+      final group = _spriteGroupsById[groupId];
+      if (group != null) {
+        try {
+          final bytes = base64Decode(group.imageBase64);
+          return decodeImageFromList(bytes);
+        } catch (_) {
+          // fall through to legacy spritePath loading
+        }
+      }
+    }
+
+    return _tryLoadSpriteImage(
+      basePath: basePath,
+      spritePath: bone.spritePath,
+    );
   }
 
   Future<ui.Image?> _tryLoadSpriteImage({

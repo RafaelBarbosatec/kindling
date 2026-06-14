@@ -268,60 +268,72 @@ class _EditorPageState extends State<EditorPage>
   Widget _buildSpriteGroupCard(SpriteGroup group) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            height: 100,
-            color: Colors.grey[200],
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Icon(Icons.image, size: 40, color: Colors.grey),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${group.sprites.length} parte${group.sprites.length != 1 ? 's' : ''}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
+      child: InkWell(
+        onTap: () => _showSpriteGroupDetailsDialog(group),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              height: 100,
+              color: Colors.grey[200],
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const Icon(Icons.image, size: 40, color: Colors.grey),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${group.sprites.length} parte${group.sprites.length != 1 ? 's' : ''}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    group.id,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          '${(group.imageBase64.length / 1024).toStringAsFixed(1)} KB',
-                          style: const TextStyle(fontSize: 10, color: Colors.grey),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      group.id,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            '${(group.imageBase64.length / 1024).toStringAsFixed(1)} KB',
+                            style: const TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        iconSize: 18,
-                        onPressed: () => _deleteSpriteGroup(group.id),
-                      ),
-                    ],
-                  ),
-                ],
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'delete') {
+                              _deleteSpriteGroup(group.id);
+                            }
+                          },
+                          itemBuilder: (context) => <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
+                          child: const Icon(Icons.more_vert, size: 18),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -383,6 +395,25 @@ class _EditorPageState extends State<EditorPage>
     setState(() {
       _spriteGroups.removeWhere((g) => g.id == groupId);
     });
+  }
+
+  void _showSpriteGroupDetailsDialog(SpriteGroup group) {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return _SpriteGroupDetailsDialog(
+          group: group,
+          onSpritesUpdated: (updatedGroup) {
+            setState(() {
+              final index = _spriteGroups.indexWhere((g) => g.id == group.id);
+              if (index != -1) {
+                _spriteGroups[index] = updatedGroup;
+              }
+            });
+          },
+        );
+      },
+    );
   }
 
   void _startPlayback() {
@@ -1666,5 +1697,118 @@ class _TimelineTrackPainter extends CustomPainter {
         oldDelegate.selected != selected ||
         oldDelegate.durationMs != durationMs ||
         oldDelegate.pixelsPerSecond != pixelsPerSecond;
+  }
+}
+
+class _SpriteGroupDetailsDialog extends StatefulWidget {
+  const _SpriteGroupDetailsDialog({
+    required this.group,
+    required this.onSpritesUpdated,
+  });
+
+  final SpriteGroup group;
+  final Function(SpriteGroup) onSpritesUpdated;
+
+  @override
+  State<_SpriteGroupDetailsDialog> createState() =>
+      _SpriteGroupDetailsDialogState();
+}
+
+class _SpriteGroupDetailsDialogState extends State<_SpriteGroupDetailsDialog> {
+  late List<SpriteDefinition> _sprites;
+
+  @override
+  void initState() {
+    super.initState();
+    _sprites = List<SpriteDefinition>.from(widget.group.sprites);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Sprite Group: ${widget.group.id}'),
+      content: SizedBox(
+        width: 500,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text('Partes: ${_sprites.length}'),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Part'),
+                    onPressed: _addPart,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: _sprites.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          const Icon(Icons.image_not_supported,
+                              size: 48, color: Colors.grey),
+                          const SizedBox(height: 8),
+                          const Text('No parts defined'),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _sprites.length,
+                      itemBuilder: (context, index) {
+                        final sprite = _sprites[index];
+                        return ListTile(
+                          leading: const Icon(Icons.rectangle),
+                          title: Text(sprite.id),
+                          subtitle: Text(
+                              '${sprite.vertices.length} vertices'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _removePart(index),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _saveChanges,
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  void _addPart() {
+    final id = 'part_${_sprites.length + 1}';
+    setState(() {
+      _sprites.add(SpriteDefinition(id: id, vertices: const <Offset>[]));
+    });
+  }
+
+  void _removePart(int index) {
+    setState(() {
+      _sprites.removeAt(index);
+    });
+  }
+
+  void _saveChanges() {
+    final updatedGroup = widget.group.copyWith(sprites: _sprites);
+    widget.onSpritesUpdated(updatedGroup);
+    Navigator.of(context).pop();
   }
 }

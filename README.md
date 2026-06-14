@@ -93,8 +93,13 @@ kindling/
 - ✅ Exportação dual: `skeleton.json` + `spritegroups.json`
 - ✅ Preview runtime carrega sprite groups e exibe sprites vinculados ao esqueleto
 
-### Fase 2: Vertex Editor Canvas
+### Fase 2: Vertex Editor Canvas - em andamento
 **Objetivo**: Desenhar e manipular vértices para recortar sprite areas.
+
+**Já disponível**:
+- ✅ Preview da imagem do sprite group ao abrir os detalhes
+- ✅ Editor de part com canvas para clicar e desenhar vértices por cima da imagem
+- ✅ Undo/Clear para refazer o polígono
 
 **Próximas tarefas**:
 1. Canvas para adicionar/mover/remover vértices

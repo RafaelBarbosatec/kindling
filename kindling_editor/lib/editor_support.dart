@@ -285,11 +285,36 @@ class _SpriteGroupDetailsDialog extends StatefulWidget {
 
 class _SpriteGroupDetailsDialogState extends State<_SpriteGroupDetailsDialog> {
   late List<SpriteDefinition> _sprites;
+  ui.Image? _previewImage;
+  bool _previewLoading = true;
 
   @override
   void initState() {
     super.initState();
     _sprites = List<SpriteDefinition>.from(widget.group.sprites);
+    _loadPreviewImage();
+  }
+
+  Future<void> _loadPreviewImage() async {
+    try {
+      final bytes = base64Decode(widget.group.imageBase64);
+      final image = await decodeImageFromList(bytes);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _previewImage = image;
+        _previewLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _previewImage = null;
+        _previewLoading = false;
+      });
+    }
   }
 
   @override
@@ -297,50 +322,58 @@ class _SpriteGroupDetailsDialogState extends State<_SpriteGroupDetailsDialog> {
     return AlertDialog(
       title: Text('Sprite Group: ${widget.group.id}'),
       content: SizedBox(
-        width: 500,
+        width: 920,
+        height: 720,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Text('Partes: ${_sprites.length}'),
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Part'),
-                    onPressed: _addPart,
-                  ),
-                ],
-              ),
+            _buildImagePreview(),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'Partes: ${_sprites.length}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Part'),
+                  onPressed: _createNewPart,
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
             const Divider(),
             Expanded(
               child: _sprites.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          const Icon(Icons.image_not_supported,
-                              size: 48, color: Colors.grey),
-                          const SizedBox(height: 8),
-                          const Text('No parts defined'),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
+                  ? const Center(child: Text('No parts defined yet.'))
+                  : ListView.separated(
                       itemCount: _sprites.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final sprite = _sprites[index];
                         return ListTile(
-                          leading: const Icon(Icons.rectangle),
+                          leading: const Icon(Icons.polyline),
                           title: Text(sprite.id),
-                          subtitle:
-                              Text('${sprite.vertices.length} vertices'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _removePart(index),
+                          subtitle: Text(
+                            sprite.vertices.isEmpty
+                                ? 'No vertices yet'
+                                : '${sprite.vertices.length} vertices',
+                          ),
+                          trailing: Wrap(
+                            spacing: 4,
+                            children: <Widget>[
+                              IconButton(
+                                tooltip: 'Edit vertices',
+                                icon: const Icon(Icons.edit_outlined),
+                                onPressed: () => _editPart(index),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete part',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _removePart(index),
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -362,11 +395,71 @@ class _SpriteGroupDetailsDialogState extends State<_SpriteGroupDetailsDialog> {
     );
   }
 
-  void _addPart() {
-    final id = 'part_${_sprites.length + 1}';
+  Widget _buildImagePreview() {
+    final image = _previewImage;
+    return Container(
+      height: 260,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: _previewLoading
+          ? const Center(child: CircularProgressIndicator())
+          : image == null
+              ? const Center(child: Text('Could not decode image preview.'))
+              : FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: image.width.toDouble(),
+                    height: image.height.toDouble(),
+                    child: RawImage(image: image),
+                  ),
+                ),
+    );
+  }
+
+  Future<void> _createNewPart() async {
+    final nextId = 'part_${_sprites.length + 1}';
+    final result = await _openPartEditor(
+      SpriteDefinition(id: nextId, vertices: const <Offset>[]),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
     setState(() {
-      _sprites.add(SpriteDefinition(id: id, vertices: const <Offset>[]));
+      _sprites.add(result);
     });
+  }
+
+  Future<void> _editPart(int index) async {
+    if (index < 0 || index >= _sprites.length) {
+      return;
+    }
+
+    final result = await _openPartEditor(_sprites[index]);
+    if (result == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _sprites[index] = result;
+    });
+  }
+
+  Future<SpriteDefinition?> _openPartEditor(SpriteDefinition initialPart) {
+    return showDialog<SpriteDefinition>(
+      context: context,
+      builder: (context) {
+        return _SpritePartEditorDialog(
+          group: widget.group,
+          initialPart: initialPart,
+        );
+      },
+    );
   }
 
   void _removePart(int index) {
@@ -379,5 +472,314 @@ class _SpriteGroupDetailsDialogState extends State<_SpriteGroupDetailsDialog> {
     final updatedGroup = widget.group.copyWith(sprites: _sprites);
     widget.onSpritesUpdated(updatedGroup);
     Navigator.of(context).pop();
+  }
+}
+
+class _SpritePartEditorDialog extends StatefulWidget {
+  const _SpritePartEditorDialog({
+    required this.group,
+    required this.initialPart,
+  });
+
+  final SpriteGroup group;
+  final SpriteDefinition initialPart;
+
+  @override
+  State<_SpritePartEditorDialog> createState() =>
+      _SpritePartEditorDialogState();
+}
+
+class _SpritePartEditorDialogState extends State<_SpritePartEditorDialog> {
+  late final TextEditingController _idController;
+  late List<Offset> _vertices;
+  ui.Image? _previewImage;
+  bool _previewLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _idController = TextEditingController(text: widget.initialPart.id);
+    _vertices = List<Offset>.from(widget.initialPart.vertices);
+    _loadPreviewImage();
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPreviewImage() async {
+    try {
+      final bytes = base64Decode(widget.group.imageBase64);
+      final image = await decodeImageFromList(bytes);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _previewImage = image;
+        _previewLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _previewImage = null;
+        _previewLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Edit Part: ${widget.initialPart.id}'),
+      content: SizedBox(
+        width: 960,
+        height: 760,
+        child: Column(
+          children: <Widget>[
+            TextField(
+              controller: _idController,
+              decoration: const InputDecoration(
+                labelText: 'Part id',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _previewLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _previewImage == null
+                      ? const Center(child: Text('Could not decode image.'))
+                      : _SpriteVertexEditor(
+                          image: _previewImage!,
+                          vertices: _vertices,
+                          onAddVertex: (vertex) {
+                            setState(() {
+                              _vertices.add(vertex);
+                            });
+                          },
+                          onUndo: _vertices.isEmpty
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _vertices.removeLast();
+                                  });
+                                },
+                          onClear: _vertices.isEmpty
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _vertices.clear();
+                                  });
+                                },
+                        ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Clique na imagem para adicionar vértices. Use Undo/Clear se precisar refazer.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final id = _idController.text.trim();
+            if (id.isEmpty) {
+              return;
+            }
+            Navigator.of(context).pop(
+              SpriteDefinition(id: id, vertices: List<Offset>.from(_vertices)),
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpriteVertexEditor extends StatelessWidget {
+  const _SpriteVertexEditor({
+    required this.image,
+    required this.vertices,
+    required this.onAddVertex,
+    required this.onUndo,
+    required this.onClear,
+  });
+
+  final ui.Image image;
+  final List<Offset> vertices;
+  final ValueChanged<Offset> onAddVertex;
+  final VoidCallback? onUndo;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bounds = constraints.biggest;
+        final fit = applyBoxFit(
+          BoxFit.contain,
+          Size(image.width.toDouble(), image.height.toDouble()),
+          bounds,
+        );
+        final destination = Alignment.center.inscribe(
+          fit.destination,
+          Offset.zero & bounds,
+        );
+
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: <Widget>[
+              Positioned.fromRect(
+                rect: destination,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (details) {
+                    final local = details.localPosition;
+                    final scaleX = fit.destination.width / image.width;
+                    final scaleY = fit.destination.height / image.height;
+                    final imageX = local.dx / scaleX;
+                    final imageY = local.dy / scaleY;
+                    if (imageX < 0 || imageY < 0) {
+                      return;
+                    }
+                    if (imageX > image.width || imageY > image.height) {
+                      return;
+                    }
+                    onAddVertex(Offset(imageX, imageY));
+                  },
+                  child: Stack(
+                    children: <Widget>[
+                      Positioned.fill(
+                        child: RawImage(
+                          image: image,
+                          fit: BoxFit.fill,
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _SpriteVerticesPainter(
+                            vertices: vertices,
+                            imageSize: Size(
+                              image.width.toDouble(),
+                              image.height.toDouble(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: Row(
+                  children: <Widget>[
+                    FilledButton.tonalIcon(
+                      onPressed: onUndo,
+                      icon: const Icon(Icons.undo),
+                      label: const Text('Undo'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.tonalIcon(
+                      onPressed: onClear,
+                      icon: const Icon(Icons.delete_sweep_outlined),
+                      label: const Text('Clear'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SpriteVerticesPainter extends CustomPainter {
+  const _SpriteVerticesPainter({
+    required this.vertices,
+    required this.imageSize,
+  });
+
+  final List<Offset> vertices;
+  final Size imageSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (vertices.isEmpty) {
+      return;
+    }
+
+    final scaleX = size.width / imageSize.width;
+    final scaleY = size.height / imageSize.height;
+    final scaledVertices = vertices
+        .map((vertex) => Offset(vertex.dx * scaleX, vertex.dy * scaleY))
+        .toList(growable: false);
+
+    final fillPaint = Paint()
+      ..color = const Color(0x3314B8A6)
+      ..style = PaintingStyle.fill;
+    final strokePaint = Paint()
+      ..color = const Color(0xFF0F766E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final pointPaint = Paint()..color = const Color(0xFFF97316);
+
+    if (scaledVertices.length >= 3) {
+      final path = Path()..addPolygon(scaledVertices, true);
+      canvas.drawPath(path, fillPaint);
+      canvas.drawPath(path, strokePaint);
+    } else if (scaledVertices.length == 2) {
+      canvas.drawLine(scaledVertices[0], scaledVertices[1], strokePaint);
+    }
+
+    for (var index = 0; index < scaledVertices.length; index++) {
+      final vertex = scaledVertices[index];
+      canvas.drawCircle(vertex, 5.5, pointPaint);
+      canvas.drawCircle(
+        vertex,
+        2.5,
+        Paint()..color = const Color(0xFFFFFFFF),
+      );
+
+      final labelPainter = TextPainter(
+        text: TextSpan(
+          text: '${index + 1}',
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      labelPainter.paint(canvas, vertex + const Offset(8, -18));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpriteVerticesPainter oldDelegate) {
+    return oldDelegate.vertices != vertices ||
+        oldDelegate.imageSize != imageSize;
   }
 }

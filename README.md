@@ -16,7 +16,9 @@ kindling/
 │       └── math/
 │           └── skeleton_math.dart      # Transform math & interpolation
 ├── kindling_editor/               # Editor Flutter app
-│   └── lib/main.dart                  # 1 aba: Skeleton Editor (completa)
+│   └── lib/
+│       ├── main.dart                  # Bootstrap + editor shell
+│       └── editor_support.dart        # Painters, dialog and UI helpers
 ├── example/                        # Preview app
 │   └── lib/main.dart                  # Importa JSON e visualiza com blend
 └── pubspec.yaml

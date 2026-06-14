@@ -36,7 +36,11 @@ class EditorPage extends StatefulWidget {
 }
 
 class _EditorPageState extends State<EditorPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  // === Tab Controller ===
+  late final TabController _tabController;
+
+  // === Skeleton Editor State ===
   double _timelineDurationMs = 4000;
   static const double _timelineStepMs = 250;
   static const double _pixelsPerSecond = 160;
@@ -60,9 +64,17 @@ class _EditorPageState extends State<EditorPage>
   double _playbackTimeMs = 0;
   late final AnimationController _animationController;
 
+  // === Sprite Groups State ===
+  late List<SpriteGroup> _spriteGroups;
+
   @override
   void initState() {
     super.initState();
+    
+    // Initialize TabController for 2 tabs
+    _tabController = TabController(length: 2, vsync: this);
+
+    // Initialize Skeleton Editor state
     _bones = <Bone>[
       const Bone(
         id: 'root',
@@ -96,10 +108,14 @@ class _EditorPageState extends State<EditorPage>
       duration: Duration(milliseconds: _timelineDurationMs.toInt()),
     );
     _animationController.addListener(_onPlaybackTick);
+
+    // Initialize Sprite Groups state
+    _spriteGroups = <SpriteGroup>[];
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -109,6 +125,13 @@ class _EditorPageState extends State<EditorPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('kindling_editor - MVP'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const <Widget>[
+            Tab(icon: Icon(Icons.account_tree), text: 'Skeleton'),
+            Tab(icon: Icon(Icons.image), text: 'Sprite Groups'),
+          ],
+        ),
         actions: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -141,24 +164,177 @@ class _EditorPageState extends State<EditorPage>
           ),
         ],
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: <Widget>[
-          Expanded(
-            child: Row(
-              children: <Widget>[
-                SizedBox(width: 280, child: _buildHierarchyPanel()),
-                const VerticalDivider(width: 1),
-                Expanded(child: _buildCanvasPanel()),
-                const VerticalDivider(width: 1),
-                SizedBox(width: 280, child: _buildInspectorPanel()),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          SizedBox(height: 240, child: _buildTimelinePanel()),
+          // Tab 1: Skeleton Editor
+          _buildSkeletonEditorTab(),
+          // Tab 2: Sprite Groups
+          _buildSpriteGroupsTab(),
         ],
       ),
     );
+  }
+
+  Widget _buildSkeletonEditorTab() {
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: Row(
+            children: <Widget>[
+              SizedBox(width: 280, child: _buildHierarchyPanel()),
+              const VerticalDivider(width: 1),
+              Expanded(child: _buildCanvasPanel()),
+              const VerticalDivider(width: 1),
+              SizedBox(width: 280, child: _buildInspectorPanel()),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        SizedBox(height: 240, child: _buildTimelinePanel()),
+      ],
+    );
+  }
+
+  Widget _buildSpriteGroupsTab() {
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: <Widget>[
+              const Text(
+                'Sprite Groups',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 12),
+              Badge(
+                label: Text(_spriteGroups.length.toString()),
+                child: const Icon(Icons.image),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Import Image'),
+                onPressed: _importImageAsGroup,
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        if (_spriteGroups.isEmpty)
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No sprite groups yet',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Click "Import Image" to add a new sprite sheet',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: _spriteGroups.length,
+              itemBuilder: (context, index) {
+                final group = _spriteGroups[index];
+                return _buildSpriteGroupCard(group);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSpriteGroupCard(SpriteGroup group) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            height: 100,
+            color: Colors.grey[200],
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(Icons.image, size: 40, color: Colors.grey),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${group.sprites.length} parte${group.sprites.length != 1 ? 's' : ''}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    group.id,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          '${(group.imageBase64.length / 1024).toStringAsFixed(1)} KB',
+                          style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        iconSize: 18,
+                        onPressed: () => _deleteSpriteGroup(group.id),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _importImageAsGroup() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Feature em desenvolvimento')),
+    );
+  }
+
+  void _deleteSpriteGroup(String groupId) {
+    setState(() {
+      _spriteGroups.removeWhere((g) => g.id == groupId);
+    });
   }
 
   void _startPlayback() {

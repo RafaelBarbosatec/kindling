@@ -78,32 +78,36 @@ kindling/
 
 ## 🎯 Próximas Etapas (Para Continuar Depois)
 
-### Fase 1: Sprite Groups Manager (MVP Simplificado)
+### Fase 1: Sprite Groups Manager (MVP Simplificado) - 20% ✅
 **Objetivo**: Introducir sistema de sprite sheets com base64 e partes nomeadas.
 
-**O que implementar**:
-1. **Nova aba "Sprite Groups"** no `kindling_editor`:
-   - Lista de sprite groups criados
-   - Botão "Import Image" (converte para base64 via file_picker)
-   - Card por group mostrando imagem compactada e count de parts
-   - Botão "Add Part" para cada group
+**O que já foi implementado** ✅:
+- ✅ Nova aba "Sprite Groups" no editor com TabBar
+- ✅ UI com GridView para listar grupos (cards com tamanho de arquivo)
+- ✅ Botão Delete para remover groups
+- ✅ State management: `late List<SpriteGroup> _spriteGroups`
 
-2. **Editor de Parts Simplificado** (sem vértices ainda):
-   - Popup p/ editar ID de cada part
-   - Placeholder para future editor visual de vértices
+**O que ainda falta nesta fase**:
+1. 🔴 **File picker + base64** → Botão "Import Image" deve:
+   - Abrir diálogo de seleção de arquivo
+   - Converter PNG/JPG para base64
+   - Criar `SpriteGroup` com ID auto-gerado
+   - Exibir no grid
 
-3. **Update do Bone Model**:
-   - Adicionar `spriteGroupId` + `spritePartId` (feito ✅)
-   - Manter `spritePath` retrocompat por enquanto
+2. 🔴 **Editor de Parts** (sem vértices ainda):
+   - Clique em group → abre pop-up com lista de parts
+   - Botão "Add Part" cria novo `SpriteDefinition(id, vertices: [])`
+   - UI simples: ID text field
 
-4. **Update do Inspector**:
-   - Dropdown de sprite groups disponíveis
-   - Dropdown de parts dentro do group selecionado
-   - Visualização da imagem e área do part (quando houver verts)
+3. 🔴 **Update Inspector**:
+   - Na aba Skeleton: Dropdown de sprite groups para cada bone
+   - Segundo dropdown: partes disponíveis
+   - Visual: mostrar grupo selecionado
 
-5. **Exportação Dual JSON**:
-   - `skeleton.json`: bones + animations + refs a spritegroups
-   - `spritegroups.json`: grupos + imagens base64 + parts + vértices
+4. 🔴 **Exportação Dual JSON**:
+   - `skeleton.json`: bones + animations + refs a spritegroups  
+   - `spritegroups.json`: grupos + imagens base64 + parts
+   - Ambos salvos ou copiados juntos
 
 ### Fase 2: Editor Visual de Vértices (Profissional)
 **Objetivo**: Desenhar e manipular vértices para recortar sprite areas.
@@ -239,7 +243,7 @@ dependencies:
 
 ---
 
-**Status**: MVP Completo ✅ | Próximo Milestone: Sprite Groups Manager  
+**Status**: MVP v1 Completo ✅ | Adicionando Sprite Groups (Fase 1: 20% ✅)  
 **Linguagem**: Dart 3.11+  
 **Framework**: Flutter 3.16+  
 **License**: (Adicionar conforme necessário)

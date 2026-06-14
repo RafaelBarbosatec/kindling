@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kindling/kindling.dart';
@@ -325,10 +326,57 @@ class _EditorPageState extends State<EditorPage>
     );
   }
 
-  void _importImageAsGroup() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Feature em desenvolvimento')),
-    );
+  void _importImageAsGroup() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = File(result.files.single.path!);
+      final bytes = await file.readAsBytes();
+      final base64Data = base64Encode(bytes);
+
+      // Generate group ID from filename
+      final fileName = result.files.single.name;
+      final groupId = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+
+      final newGroup = SpriteGroup(
+        id: groupId,
+        imageBase64: base64Data,
+        sprites: <SpriteDefinition>[],
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _spriteGroups.add(newGroup);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sprite group "$groupId" imported successfully'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao importar: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _deleteSpriteGroup(String groupId) {

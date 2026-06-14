@@ -1414,53 +1414,113 @@ class _EditorPageState extends State<EditorPage>
   }
 
   void _showExportJson() {
-    final project = _buildExportProject();
-    final jsonString = const JsonEncoder.withIndent(
-      '  ',
-    ).convert(project.toJson());
-    final controller = TextEditingController(text: jsonString);
+    final skeletonJson = _buildExportProject();
+    final skeletonJsonString = const JsonEncoder.withIndent('  ').convert(skeletonJson.toJson());
+
+    final spriteGroupsJson = _buildExportSpriteGroups();
+    final spriteGroupsJsonString = const JsonEncoder.withIndent('  ').convert(spriteGroupsJson);
+
     showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('SkeletonProject JSON'),
-          content: SizedBox(
-            width: 760,
-            child: TextField(
-              controller: controller,
-              readOnly: true,
-              maxLines: 24,
-              minLines: 16,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
+        return DefaultTabController(
+          length: 2,
+          child: AlertDialog(
+            title: const Text('Export JSON'),
+            content: SizedBox(
+              width: 760,
+              height: 500,
+              child: Column(
+                children: <Widget>[
+                  TabBar(
+                    tabs: const <Widget>[
+                      Tab(text: 'Skeleton'),
+                      Tab(text: 'Sprite Groups'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: <Widget>[
+                        // Skeleton Tab
+                        TextField(
+                          readOnly: true,
+                          maxLines: null,
+                          controller: TextEditingController(text: skeletonJsonString),
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                        // Sprite Groups Tab
+                        TextField(
+                          readOnly: true,
+                          maxLines: null,
+                          controller: TextEditingController(text: spriteGroupsJsonString),
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
+            actions: <Widget>[
+              FilledButton.tonalIcon(
+                onPressed: () async {
+                  // Copy skeleton
+                  await Clipboard.setData(ClipboardData(text: skeletonJsonString));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✓ Skeleton JSON copiado'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_all),
+                label: const Text('Copy Skeleton'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () async {
+                  // Copy sprite groups
+                  await Clipboard.setData(ClipboardData(text: spriteGroupsJsonString));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✓ Sprite Groups JSON copiado'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_all),
+                label: const Text('Copy Groups'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
           ),
-          actions: <Widget>[
-            FilledButton.tonalIcon(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: jsonString));
-                if (!context.mounted) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('JSON copiado para a area de transferencia.'),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.copy_all),
-              label: const Text('Copiar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fechar'),
-            ),
-          ],
         );
       },
     );
+  }
+
+  Map<String, dynamic> _buildExportSpriteGroups() {
+    return <String, dynamic>{
+      'version': '1.0',
+      'spriteGroups': <Map<String, dynamic>>[
+        for (final group in _spriteGroups)
+          group.toJson(),
+      ],
+    };
   }
 
   SkeletonProject _buildExportProject() {

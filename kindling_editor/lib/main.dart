@@ -599,15 +599,49 @@ class _EditorPageState extends State<EditorPage>
                   },
                 ),
                 const SizedBox(height: 16),
-                Text('Sprite: ${selectedBone.spritePath ?? 'nenhum'}'),
+                // === Sprite Groups Integration ===
+                const Text('Sprite Group:', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                DropdownButton<String?>(
+                  isExpanded: true,
+                  value: selectedBone.spriteGroupId,
+                  items: <DropdownMenuItem<String?>>[
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('(none)'),
+                    ),
+                    for (final group in _spriteGroups)
+                      DropdownMenuItem<String?>(
+                        value: group.id,
+                        child: Text(group.id),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    _updateSelectedBoneSpriteGroup(value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                const Text('Sprite Part:', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                _buildSpritePartDropdown(selectedBone),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                // === Legacy Sprite Path (Backward Compat) ===
+                const Text(
+                  'Legacy PNG Path:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Text('Sprite: ${selectedBone.spritePath ?? 'nenhum'}', style: const TextStyle(fontSize: 12)),
                 const SizedBox(height: 8),
                 FilledButton.tonalIcon(
                   onPressed: _editSelectedBoneSpritePath,
                   icon: const Icon(Icons.image_outlined),
                   label: Text(
                     selectedBone.spritePath == null
-                        ? 'Definir Sprite PNG'
-                        : 'Alterar Sprite PNG',
+                        ? 'Set PNG Path'
+                        : 'Change PNG Path',
                   ),
                 ),
                 if (selectedBone.spritePath != null) ...<Widget>[
@@ -615,18 +649,97 @@ class _EditorPageState extends State<EditorPage>
                   TextButton.icon(
                     onPressed: _clearSelectedBoneSpritePath,
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('Remover Sprite'),
+                    label: const Text('Remove Sprite'),
                   ),
                 ],
                 const SizedBox(height: 16),
                 const Text(
-                  'Dica: use caminho relativo ao arquivo JSON exportado. No runtime/example, as imagens serao procuradas na mesma pasta base escolhida na importacao.',
+                  'Tip: For legacy PNG paths, use relative paths. For sprite groups, select group and part above.',
+                  style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
                 ),
               ],
             ),
           ),
       ],
     );
+  }
+
+  Widget _buildSpritePartDropdown(Bone selectedBone) {
+    final groupId = selectedBone.spriteGroupId;
+    if (groupId == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Text('(Select a group first)', style: TextStyle(color: Colors.grey)),
+      );
+    }
+
+    final group =
+        _spriteGroups.where((g) => g.id == groupId).firstOrNull;
+    if (group == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Text('(Group not found)', style: TextStyle(color: Colors.red)),
+      );
+    }
+
+    return DropdownButton<String?>(
+      isExpanded: true,
+      value: selectedBone.spritePartId,
+      items: <DropdownMenuItem<String?>>[
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text('(none)'),
+        ),
+        for (final part in group.sprites)
+          DropdownMenuItem<String?>(
+            value: part.id,
+            child: Text(part.id),
+          ),
+      ],
+      onChanged: (value) {
+        _updateSelectedBoneSpritePart(value);
+      },
+    );
+  }
+
+  void _updateSelectedBoneSpriteGroup(String? groupId) {
+    final selectedBoneId = _selectedBoneId;
+    if (selectedBoneId == null) {
+      return;
+    }
+
+    setState(() {
+      final updatedBones = _bones
+          .map((bone) =>
+              bone.id == selectedBoneId
+                  ? bone.copyWith(spriteGroupId: groupId, spritePartId: null)
+                  : bone)
+          .toList(growable: false);
+      _bones = updatedBones;
+    });
+  }
+
+  void _updateSelectedBoneSpritePart(String? partId) {
+    final selectedBoneId = _selectedBoneId;
+    if (selectedBoneId == null) {
+      return;
+    }
+
+    setState(() {
+      final updatedBones = _bones
+          .map((bone) =>
+              bone.id == selectedBoneId ? bone.copyWith(spritePartId: partId) : bone)
+          .toList(growable: false);
+      _bones = updatedBones;
+    });
   }
 
   Widget _buildCanvasPanel() {

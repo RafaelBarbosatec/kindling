@@ -78,36 +78,32 @@ kindling/
 
 ## 🎯 Próximas Etapas (Para Continuar Depois)
 
-### Fase 1: Sprite Groups Manager (MVP Simplificado) - 20% ✅
+### Fase 1: Sprite Groups Manager (MVP Simplificado) - 60% ✅
 **Objetivo**: Introducir sistema de sprite sheets com base64 e partes nomeadas.
 
 **O que já foi implementado** ✅:
 - ✅ Nova aba "Sprite Groups" no editor com TabBar
 - ✅ UI com GridView para listar grupos (cards com tamanho de arquivo)
 - ✅ Botão Delete para remover groups
-- ✅ State management: `late List<SpriteGroup> _spriteGroups`
+- ✅ **File picker + base64**: Botão "Import Image" funciona
+- ✅ **Part management**: Dialog para editar partes de cada grupo
+- ✅ **Add part**: Criar novas partes com IDs auto-gerados
+- ✅ **Remove part**: Deletar partes do grupo
 
 **O que ainda falta nesta fase**:
-1. 🔴 **File picker + base64** → Botão "Import Image" deve:
-   - Abrir diálogo de seleção de arquivo
-   - Converter PNG/JPG para base64
-   - Criar `SpriteGroup` com ID auto-gerado
-   - Exibir no grid
+1. 🔴 **Update Inspector** (Connect Bones to Sprite Groups):
+   - Na aba Skeleton/Inspector: Adicionar dropdowns
+   - Dropdown 1: Selecionar `spriteGroupId` (lista de grupos importados)
+   - Dropdown 2: Selecionar `spritePartId` (partes do grupo selecionado)
+   - Visual: mostrar grupo + parte selecionados
 
-2. 🔴 **Editor de Parts** (sem vértices ainda):
-   - Clique em group → abre pop-up com lista de parts
-   - Botão "Add Part" cria novo `SpriteDefinition(id, vertices: [])`
-   - UI simples: ID text field
+2. 🔴 **Exportação Dual JSON**:
+   - Botão "Export JSON" também salva `spritegroups.json`
+   - Ambos files com estrutura correta para runtime
 
-3. 🔴 **Update Inspector**:
-   - Na aba Skeleton: Dropdown de sprite groups para cada bone
-   - Segundo dropdown: partes disponíveis
-   - Visual: mostrar grupo selecionado
-
-4. 🔴 **Exportação Dual JSON**:
-   - `skeleton.json`: bones + animations + refs a spritegroups  
-   - `spritegroups.json`: grupos + imagens base64 + parts
-   - Ambos salvos ou copiados juntos
+3. 🔴 **Runtime Integration** (fase 2):
+   - `SkeletalAnimationComponent` carrega `spritegroups.json`
+   - Renderiza corretamente usando `spriteGroupId` + `spritePartId`
 
 ### Fase 2: Editor Visual de Vértices (Profissional)
 **Objetivo**: Desenhar e manipular vértices para recortar sprite areas.

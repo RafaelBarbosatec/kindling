@@ -9,6 +9,8 @@ class Bone {
     required this.name,
     this.parentId,
     this.spritePath,
+    this.spriteGroupId,
+    this.spritePartId,
     required this.localPosition,
     required this.localRotation,
     required this.localScale,
@@ -19,6 +21,8 @@ class Bone {
   final String name;
   final String? parentId;
   final String? spritePath;
+  final String? spriteGroupId;
+  final String? spritePartId;
   final Offset localPosition;
   final double localRotation;
   final double localScale;
@@ -29,6 +33,8 @@ class Bone {
     String? name,
     String? parentId,
     String? spritePath,
+    String? spriteGroupId,
+    String? spritePartId,
     Offset? localPosition,
     double? localRotation,
     double? localScale,
@@ -39,6 +45,8 @@ class Bone {
       name: name ?? this.name,
       parentId: parentId ?? this.parentId,
       spritePath: spritePath ?? this.spritePath,
+      spriteGroupId: spriteGroupId ?? this.spriteGroupId,
+      spritePartId: spritePartId ?? this.spritePartId,
       localPosition: localPosition ?? this.localPosition,
       localRotation: localRotation ?? this.localRotation,
       localScale: localScale ?? this.localScale,
@@ -52,6 +60,8 @@ class Bone {
       'name': name,
       'parentId': parentId,
       'spritePath': spritePath,
+      'spriteGroupId': spriteGroupId,
+      'spritePartId': spritePartId,
       'localPosition': <String, dynamic>{
         'x': localPosition.dx,
         'y': localPosition.dy,
@@ -72,6 +82,8 @@ class Bone {
       name: json['name'] as String,
       parentId: json['parentId'] as String?,
       spritePath: json['spritePath'] as String?,
+      spriteGroupId: json['spriteGroupId'] as String?,
+      spritePartId: json['spritePartId'] as String?,
       localPosition: Offset(
         (position['x'] as num).toDouble(),
         (position['y'] as num).toDouble(),

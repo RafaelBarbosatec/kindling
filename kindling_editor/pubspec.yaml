@@ -12,6 +12,7 @@ dependencies:
   kindling:
     path: ../
   vector_math: ^2.2.0
+  file_picker: ^5.4.0
 
 dev_dependencies:
   flutter_test:
